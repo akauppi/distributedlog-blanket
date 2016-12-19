@@ -1,0 +1,15 @@
+FROM java:openjdk-8-jre-alpine
+
+MAINTAINER Asko Kauppi <akauppi@gmail.com>
+
+LABEL name="distributedlog-zk" version="0.4.0-SNAPSHOT"
+
+ENV APP /app
+
+ENV DL incubator-distributedlog
+
+COPY ${DL}/distributedlog-service/lib/zookeeper-3.5.1-alpha.jar ${APP}/lib
+
+WORKDIR ${APP}
+
+#CMD ["/usr/local/bin/write-proxy-start.sh"]

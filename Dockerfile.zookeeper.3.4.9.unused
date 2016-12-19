@@ -1,0 +1,28 @@
+FROM openjdk:8-jre-alpine
+MAINTAINER Asko Kauppi [akauppi@gmail.com]
+
+ARG DL=incubator-distributedlog
+ARG VERSION=3.5.1-alpha
+
+LABEL name="distributedlog-zookeeper" version=$VERSION
+
+COPY $DL/distributedlog-service/lib/zookeeper-3.5.1-alpha.jar /opt/zookeeper
+COPY conf/zookeeper.conf $CONF
+
+# Note: For performance reasons, 'txlog' is recommended to be placed in a separate drive than other data.
+#     We don't do that here.
+#
+RUN mkdir -p /tmp/data/zookeeper/txlog
+RUN echo "1" > /tmp/data/zookeeper/myid
+
+#ENV BROKER_ID 0
+#ENV ZK_SERVERS zk1:2181
+
+EXPOSE 2181 2888 3888
+
+WORKDIR /opt/zookeeper
+
+VOLUME ["/opt/zookeeper/conf", "conf"]
+
+ENTRYPOINT [ "/opt/zookeeper/bin/zkServer.sh" ]
+CMD[ "start-foreground" ]
