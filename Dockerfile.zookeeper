@@ -19,7 +19,7 @@ LABEL name="distributedlog-zookeeper" version=$VERSION
 #
 COPY $DL/distributedlog-service/ $APP/distributedlog-service/
 
-COPY conf/zookeeper.conf $CONF
+COPY conf/zoo.cfg* $CONF/
 
 RUN apk add --no-cache bash \
   && mkdir -p $DATALOG/zookeeper/txlog \
@@ -32,4 +32,4 @@ WORKDIR $APP
 # tbd. Wasn't able to bring the $APP and $CONF to the ENTRYPOINT parameters
 #ENV APP=$APP
 #ENV CONF=$CONF
-ENTRYPOINT [ "/app/distributedlog-service/bin/dlog-daemon.sh", "start", "zookeeper", "/conf/zookeeper.conf" ]
+ENTRYPOINT [ "/app/distributedlog-service/bin/dlog-daemon.sh", "start", "zookeeper", "/conf/zoo.cfg" ]

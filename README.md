@@ -67,7 +67,9 @@ $ docker run --name $CONTAINER --restart always -d $IMAGE
 
 The Docker file exposes ports 2181 2888 3888 (client port, follower port, election port), e.g. if this image is linked with others. To reach Zookeeper from the host, add `-P` to the command.
 
-To override configuration, use `-v your.conf:/conf/zookeeper.conf` (e.g. if you run multiple Zookeeper instances).
+To override configuration, use `-v your.cfg:/conf/zoo.cfg` (e.g. if you run multiple Zookeeper instances).
+
+Note: DistributedLog seems to prefer `zookeeper.conf` but latest (3.5.x) Zookeeper has `zoo.cfg`. We go with the latest trend.
 
 **Testing**
 
@@ -226,7 +228,7 @@ It can be used with other Zookeeper instances as well (>= 3.4.x), but for us it'
 
 Hint: [ZooKeeper Guide](http://distributedlog.incubator.apache.org/docs/latest/admin_guide/zookeeper)
 
-We use configuration in `conf/zookeeper.conf`. It's based on the `distributedlog-core/conf/zookeeper.conf.template`
+We use configuration in `conf/zoo.cfg`. It's based on the `distributedlog-core/conf/zookeeper.conf.template`
 
 Data is gathered on the local disk. DistributedLog instructions recommend setting "data log" folder on a separate disk than the main data, but this is something that matters only in production (the instructions don't do it, and we don't either).
 
