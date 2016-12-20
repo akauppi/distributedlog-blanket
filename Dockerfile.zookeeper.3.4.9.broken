@@ -1,0 +1,12 @@
+#
+# Dockerfile for ZooKeeper 3.4.9
+#
+# Based on https://github.com/31z4/zookeeper-docker
+#
+FROM 31z4/zookeeper
+
+MAINTAINER Asko Kauppi [akauppi@gmail.com]
+
+# Using the local conf causes some problem. Try to fix. AKa201216
+#
+COPY conf/zookeeper.conf /conf/zoo.cfg

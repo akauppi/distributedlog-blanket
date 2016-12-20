@@ -63,17 +63,87 @@ exit
 
 Later, we can use this with `--link $CONTAINERNAME` to test other containers are working correctly.
 
-<!-- disabled
 
-For SOME REASON, Zookeeper keeps in CONNECTING state. 
+### Zookeeper 3.4.9 (WITHOUT our config)
 
-### Zookeeper 3.5
+DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it.
 
-DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it. The configurations have change a bit - we can aim at 3.5.x right away.
+The one we got working is the [31z4/zookeeper](https://github.com/31z4/zookeeper-docker) image.
 
-Our `Dockerfile.zookeeper.3.5` is derived from [mrhornsby/zookeeper](https://hub.docker.com/r/mrhornsby/zookeeper/). We simply add our own config files on top.
+**Building**
+
+```
+$ docker pull 31z4/zookeeper:latest
+```
+
+**Running**
+
+The name we give to the container is simply for easing the instructions. It can be anything.
+
+```
+$ export ZKCONTAINER=zk-container
+$ docker run --name $ZKCONTAINER --restart always -d 31z4/zookeeper
+```
+
+**Testing**
+
+```
+$ docker run -it --rm --link $ZKCONTAINER:zookeeper 31z4/zookeeper zkCli.sh -server zookeeper
+...
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+[zk: zookeeper(CONNECTED) 0] ls /
+[zookeeper]
+[zk: zookeeper(CONNECTED) 1] quit
+```
+
+If you see the **CONNECTED**, ZooKeeper is up and available.
+
+
+<!--
+### Zookeeper 3.4.9 (with our config) - BROKEN
+
+DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it. However, we did not get 3.5 to work under Docker (details commented out, below).
+
+The one we got working is based on the [31z4/zookeeper](https://github.com/31z4/zookeeper-docker) image. We simply add our own config files on top.
+
+**Building**
+
+```
+$ docker build -t zookeeper-3.4.9:latest -f Dockerfile.zookeeper.3.4.9 .
+```
+
+**Running**
+
+The name we give to the container is simply for easing the instructions. It can be anything.
+
+```
+$ export ZKCONTAINER=zk-container
+$ docker run --name $ZKCONTAINER --restart always -d zookeeper-3.4.9:latest
+```
+
+**Testing**
+
+```
+$ docker run -it --rm --link $ZKCONTAINER:zookeeper zookeeper-3.4.9 zkCli.sh -server zookeeper
+...
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+[zk: zookeeper(CONNECTED) 0] ls /
+[zookeeper]
+[zk: zookeeper(CONNECTED) 1] quit
+```
+
+If you see the **CONNECTED**, ZooKeeper is up and available.
+
+**Troubleshooting**
+
+If there's a repeating 'connection refused', the Zookeeper config file has some issue. See TODO.
 -->
 
+<!-- broken, please fix :)
 ### Zookeeper 3.5
 
 DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it. The configurations have change a bit - we can aim at 3.5.x right away.
@@ -99,6 +169,9 @@ $ docker run --name $ZKCONTAINER -v /var/opt/zookeeper --restart always -d zooke
 $ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog zkshell 127.0.0.1:2181
 ```
 
+<font color=red>This DID NOT pass the test: keeps state as CONNECTING instead of CONNECTED. Why is that?
+</font>
+-->
 
 
 <!-- disabled
@@ -204,6 +277,35 @@ $ $DL_HOME/distributedlog-service/bin/dlog zkshell $(docker-machine ip):2181
 -->
 
 ### BookKeeper
+
+DistributedLog uses a twitter 
+
+Reference:
+
+- 
+
+ requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it. The configurations have change a bit - we can aim at 3.5.x right away.
+
+Our `Dockerfile.zookeeper.3.5` is derived from [mrhornsby/zookeeper](https://hub.docker.com/r/mrhornsby/zookeeper/). We simply add our own config files on top.
+
+**Building**
+
+```
+$ docker build -t zookeeper-3.5:latest -f Dockerfile.zookeeper.3.5 .
+```
+
+**Running**
+
+```
+$ export ZKCONTAINER=zk-container
+$ docker run --name $ZKCONTAINER -v /var/opt/zookeeper --restart always -d zookeeper-3.5:latest
+```
+
+**Testing**
+
+```
+$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog zkshell 127.0.0.1:2181
+```
 
 
 

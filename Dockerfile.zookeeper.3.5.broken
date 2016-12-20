@@ -7,4 +7,4 @@ FROM mrhornsby/zookeeper:latest
 
 MAINTAINER Asko Kauppi [akauppi@gmail.com]
 
-#COPY conf/zoo.cfg /conf/zoo.cfg
+COPY conf/zoo.cfg* /conf/
