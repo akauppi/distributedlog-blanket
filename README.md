@@ -1,4 +1,4 @@
-# sleeves-distributedlog
+# distributedlog-blanket
 
 [DistributedLog](http://distributedlog.incubator.apache.org/) is an interesting project but its documentation and Docker deployability are so-and-so (Dec-16).
 
@@ -22,6 +22,12 @@ Instead of making the Docker side pull distributedlog files in, or pouring all o
 
 ## Requirements
 
+- `mvn`
+- `git`
+- Docker Toolbox or `docker-machine`
+
+The instructions are made on macOS 10.12, with HomeBrew and `docker-machine`. The intention is to also support Linux, but that isn't actively tested.
+
 Clone distributedlog to a subfolder, and build it. You can use a release of your choice.
 
 ```
@@ -29,7 +35,9 @@ $ git clone https://github.com/apache/incubator-distributedlog.git
 ```
 
 ```
-$ (cd incubator-distrbutedlog && mvn clean package -DskipTests)
+$ cd incubator-distrbutedlog
+$ mvn clean package -DskipTests
+$ cd ..
 ```
 
 Have Docker running:
@@ -289,7 +297,8 @@ Because of this, we're building BookKeeper from the DistributedLog sources.
 **Building**
 
 ```
-$ docker build -t bookkeeper:latest -f Dockerfile.bookkeeper .
+$ export BKIMAGE=dlbk:latest
+$ docker build -t $BKIMAGE -f Dockerfile.bk .
 ```
 
 **Configuring ZooKeeper**
@@ -297,6 +306,8 @@ $ docker build -t bookkeeper:latest -f Dockerfile.bookkeeper .
 Let's use the same mechanism as in testing ZooKeeper, to provide it an initial configuration.
 
 Note: This follows the instructions in [Cluster Setup & Deployment](http://distributedlog.incubator.apache.org/docs/latest/deployment/cluster.html). Maybe it can be automated, maybe not.
+
+We change the configuration by directly touching ZooKeeper contents.
 
 ```
 $ docker run -it --rm --link $ZKCONTAINER:zookeeper 31z4/zookeeper zkCli.sh -server zookeeper
@@ -315,37 +326,151 @@ Created /messaging/bookkeeper/ledgers
 
 Type `quit` to exit the ZooKeeper prompt.
 
-
-
 **Running**
 
 ```
 $ export BKCONTAINER=bkc
-$ docker run --name $BKCONTAINER -v /var/opt/zookeeper --restart always -d zookeeper-3.5:latest
+$ ID=1 docker run --name $BKCONTAINER -d $BKIMAGE
 ```
 
 **Testing**
 
+Running of BookKeeper is tested by looking into the ZooKeeper contents:
+
 ```
 $ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog zkshell 127.0.0.1:2181
+...
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+[zk: 127.0.0.1:2181(CONNECTED) 0] ls /messaging/bookkeeper/ledgers/available
+[127.0.0.1:3181, 127.0.0.1:3182, 127.0.0.1:3183, readonly]
+[zk: localhost:2181(CONNECTED) 1]
 ```
 
+Alternatively, you can (needs that you use `-P` when running the container):
 
+```
+$ curl localhost:9001/ping
+pong
+curl localhost:9001/metrics?pretty=true
+...JSON...
+```
 
-### DistributedLog Core
+Now we have both dependencies running. 
+
+**Namespaces**
+
+You can just use the default namespace, `distributedlog://127.0.0.1:2181/messaging/distributedlog`, but if you wish to configure them, now is the time.
+
+Q: Why would one want to configure namespaces?
+
+Also this is done by manipulating ZooKeeper contents, via `dlog admin bind` command.
+
+```
+$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /bin/bash
+
+/app/distributedlog-service/bin/dlog admin bind \
+    -dlzr 127.0.0.1:2181 \
+    -dlzw 127.0.0.1:2181 \
+    -s 127.0.0.1:2181 \
+    -bkzr 127.0.0.1:2181 \
+    -l /messaging/bookkeeper/ledgers \
+    -i false \
+    -r true \
+    -c \
+    distributedlog://127.0.0.1:2181/messaging/distributedlog/mynamespace
+```
 
 ### DistributedLog Write Proxy
 
-### DistrbutedLog all (zk+bk+wp)
+DistributedLog can be written to directly, using a "Core library" (direct access to BookKeeper nodes), or via a Write Proxy that handles multiple writers.
+
+Note: Hopefully, also access control would eventually be provided by Write Proxy.
+
+**Building**
 
 ```
-$ docker build -t your.org/yourid/distributedlog-all:latest -f Dockerfile.all .
+$ export WPIMAGE=dlwp:latest
+$ docker build -t $WPIMAGE -f Dockerfile.wp .
 ```
 
-The Docker files are based on:
+**Running**
 
-- distributedlog itself
-- franckcuny/[docker-distributedlog](https://github.com/franckcuny/docker-distributedlog)
+```
+$ export WPCONTAINER=wpc
+$ ID=1 docker run --name $WPCONTAINER -d $WPIMAGE
+```
+
+**Testing**
+
+Like with BookKeeper, we can verify that the write proxy is running by either checking the zookeeper path or checking its stats port.
+
+```
+$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog zkshell 127.0.0.1:2181
+...
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+[zk: 127.0.0.1:2181(CONNECTED) 0] ls /messaging/distributedlog/mynamespace/.write_proxy
+[member_0000000000, member_0000000001, member_0000000002]
+[zk: localhost:2181(CONNECTED) 1]
+```
+
+Or (needs that you use `-P` when running the container):
+
+```
+$ curl localhost:20001/ping
+pong
+```
+
+## Overall testing
+
+```
+$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog tool create -u distributedlog://127.0.0.1:2181/messaging/distributedlog/mynamespace -r stream- -e 0-10
+You are going to create streams : [stream-0, stream-1, stream-2, stream-3, stream-4, stream-5, stream-6, stream-7, stream-8, stream-9, stream-10] (Y or N) Y
+```
+
+Tail read from such 10 streams:
+
+```
+$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-tutorials/distributedlog-basic/bin/runner run com.twitter.distributedlog.basic.MultiReader distributedlog://127.0.0.1:2181/messaging/distributedlog/mynamespace stream-0,stream-1,stream-2,stream-3,stream-4,stream-5,stream-6,stream-7,stream-8,stream-9,stream-10
+```
+
+All of these of course get slightly simpler if you expose the ZooKeeper port `2181` when launching the container, so you can reach it directly from the host.
+
+
+### Whole shebang with `docker-compose`
+
+To compose a combination of:
+
+- ZooKeeper (one node)
+- BookKeeper (one node)
+- Write Proxy (one node)
+
+This is useful e.g. for development.
+
+```
+$ docker-compose up
+```
+
+To shut down the services:
+
+```
+$ docker-compose down
+```
+
+<!-- disabled (unnecessary?)
+## Record generators
+
+To create artificial load on a DistributedLog cluster, one can:
+
+```
+$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-tutorials/distributedlog-basic/bin/runner run com.twitter.distributedlog.basic.RecordGenerator 'zk!127.0.0.1:2181!/messaging/distributedlog/mynamespace/.write_proxy' stream-0 100
+```
+
+This fetches the write proxy address from the ZooKeeper, and then feeds values through it.
+-->
 
 
 ## Troubleshooting
@@ -379,6 +504,15 @@ Then try again.
 
 - DL > Admin Guide > [Zookeeper](http://distributedlog.incubator.apache.org/docs/latest/admin_guide/zookeeper.html)
 - DL > Admin Guide > [BookKeeper](http://distributedlog.incubator.apache.org/docs/latest/admin_guide/bookkeeper.html)
-- 31z4/[zookeeper-docker](https://github.com/31z4/zookeeper-docker) (GitHub)
 - DistributedLog > [Cluster Setup & Deployment](http://distributedlog.incubator.apache.org/docs/latest/deployment/cluster.html)
+
+### Other DistributedLog / BookKeeper / ZooKeeper Docker projects
+
+The Docker files are based on:
+
+- distributedlog itself
+- franckcuny/[docker-distributedlog](https://github.com/franckcuny/docker-distributedlog)
+- 31z4/[zookeeper-docker](https://github.com/31z4/zookeeper-docker) (GitHub)
+
+The approaches taken in these did not match our needs. Ideally, the DistributedLog project itself will allow cluster-friendly dockerization, e.g. for Kubernetes.
 

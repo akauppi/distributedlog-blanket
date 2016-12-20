@@ -1,0 +1,25 @@
+version: '2'
+services:
+  zookeeper:
+    image: 31z4/zookeeper
+    restart: always
+    ports:
+     - "2181:2181"
+    volumes:
+
+  bookkeeper:
+    build: Dockerfile.bk
+    ports:
+     - "3181:3181"
+     - "9001:9001"
+    volumes:
+
+  writeproxy:
+    build: Dockerfile.wp
+    ports:
+     - "4181:4181"
+     - "20001:20001"
+    volumes:
+
+#volumes:
+#    logs: {}

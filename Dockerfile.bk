@@ -1,7 +1,10 @@
 #
-# Dockerfile for BookKeeper (Twitter branch included in DistributedLog 0.4.0-SNAPSHOT)
+# Dockerfile.bk
 #
-FROM openjdk:8-jre-alpine
+# BookKeeper Twitter variant. Tried to design the Dockerfile so that one or more instances can be launched, also
+# on the same Docker container (i.e. the file names contain the ID).
+#
+FROM distributedlog-base
 MAINTAINER Asko Kauppi [akauppi@gmail.com]
 
 ARG DL=incubator-distributedlog
@@ -9,25 +12,26 @@ ARG VERSION=latest
 
 ARG APP=/app
 ARG CONF=/conf
+ARG ID=1
 
-LABEL name="distributedlog-bookkeeper" version=$VERSION
+LABEL name="distributedlog-bk-$ID" version=$VERSION
 
-# Copy all of 'distributedlog-service', for now (we probably won't need all the files for Bookkeeper).
-#
-COPY $DL/distributedlog-service/ $APP/distributedlog-service/
-
-COPY conf/bookie-*.conf $CONF/
+COPY conf/bookie-x.conf $CONF/bookie-${ID}.conf
 
 RUN apk add --no-cache \
   bash
 
-...# tbd. Add this to above
-...
-$ BOOKIE_CONF=${DL_HOME}/distributedlog-service/conf/bookie-1.conf ./distributedlog-service/bin/dlog bkshell metaformat
-Are you sure to format bookkeeper metadata ? (Y or N) Y
+RUN echo bookiePort=318${ID} >> $CONF/bookie-${ID}.conf \
+  && echo codahaleStatsHttpPort=900${ID} >> $CONF/bookie-${ID}.conf \
+  && BOOKIE_CONF=$CONF/bookie-${ID}.conf $APP/distributedlog-service/bin/dlog bkshell metaformat \
+  && echo journalDirectory=/tmp/data/bk-${ID}/journal >> $CONF/bookie-${ID}.conf \
+  && echo ledgerDirectories=/tmp/data/bk-${ID}/ledgers >> $CONF/bookie-${ID}.conf \
+  && echo indexDirectories=/tmp/data/bk-${ID}/ledgers >> $CONF/bookie-${ID}.conf \
+  && BOOKIE_CONF=$CONF/bookie-${ID}.conf $APP/distributedlog-service/bin/dlog bkshell bookieformat
 
+# Are you sure to format bookkeeper metadata ? (Y or N) Y
 
-EXPOSE 2181 2888 3888
+EXPOSE 318${ID} 900${ID}
 
 WORKDIR $APP
 
@@ -35,3 +39,7 @@ WORKDIR $APP
 #ENV APP=$APP
 #ENV CONF=$CONF
 ENTRYPOINT [ "/app/distributedlog-service/bin/dlog-daemon.sh", "start", "zookeeper", "/conf/zoo.cfg" ]
+
+# tbd. Why is `SERVICE_PORT` given here, it's also in the config file
+#
+CMD SERVICE_PORT=318${ID} $APP/distributedlog-service/bin/dlog-daemon.sh start bookie --conf $CONF/bookie-${ID}.conf

@@ -1,0 +1,56 @@
+#
+# Dockerfile.rp
+#
+# DistributedLog Write Proxy
+#
+FROM distributedlog-base
+MAINTAINER Asko Kauppi [akauppi@gmail.com]
+
+#ARG DL=incubator-distributedlog
+#ARG VERSION=latest
+
+#ARG APP=/app
+#ARG CONF=/conf
+ARG ID=0
+
+LABEL name="distributedlog-wp-$ID" version=$VERSION
+
+RUN apk add --no-cache \
+  bash
+
+#
+# Dockerfile.bk
+#
+# BookKeeper Twitter variant. Tried to design the Dockerfile so that one or more instances can be launched, also
+# on the same Docker container (i.e. the file names contain the ID).
+#
+FROM distributedlog-base
+MAINTAINER Asko Kauppi [akauppi@gmail.com]
+
+#ARG DL=incubator-distributedlog
+#ARG VERSION=latest
+
+#ARG APP=/app
+#ARG CONF=/conf
+ARG ID=1
+ARG WP_SHARD_ID=$ID
+ARG WP_SERVICE_PORT=418${ID}
+ARG WP_STATS_PORT=2000${ID}
+
+LABEL name="distributedlog-bookkeeper-$ID" version=$VERSION
+
+COPY conf/bookie-x.conf $CONF/bookie-${ID}.conf
+
+RUN apk add --no-cache \
+  bash
+
+EXPOSE 2181 2888 3888
+
+WORKDIR $APP
+
+# tbd. Wasn't able to bring the $APP and $CONF to the ENTRYPOINT parameters
+#ENV APP=$APP
+#ENV CONF=$CONF
+
+ENTRYPOINT WP_SHARD_ID=${WP_SHARD_ID} WP_SERVICE_PORT=${WP_SERVICE_PORT} WP_STATS_PORT=${WP_STATS_PORT} \
+  /app/distributedlog-service/bin/dlog-daemon.sh start writeproxy
