@@ -1,0 +1,33 @@
+#
+# Dockerfile.base
+#
+# Container that carries all distributedlog folders. Basis for the other Docker images.
+#
+# Can also be used for running tests, peeking behind the Docker vail by using 'docker ... -link ...'.
+#
+FROM openjdk:8-jre-alpine
+#FROM java8
+
+MAINTAINER Asko Kauppi [akauppi@gmail.com]
+
+ARG DL=incubator-distributedlog
+ARG VERSION=latest
+
+ARG APP=/app
+
+LABEL name="distributedlog-base" version=$VERSION
+
+# Copy all files
+#
+COPY $DL $APP
+
+# Install 'bash' which is needed by some DL scripts
+#
+RUN apk add --no-cache \
+  bash
+
+WORKDIR $APP
+
+# Default command = just open bash (for debugging etc.)
+#
+CMD = [ "/bin/bash" ]

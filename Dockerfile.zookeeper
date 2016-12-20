@@ -25,6 +25,11 @@ RUN apk add --no-cache bash \
   && mkdir -p $DATALOG/zookeeper/txlog \
   && echo "1" > $DATA/zookeeper/myid
 
+# Are these needed/helpful? From 3.4.9 Zookeeper Docker file
+#
+ENV BROKER_ID 0
+ENV ZK_SERVERS zk1:2181
+
 EXPOSE 2181 2888 3888
 
 WORKDIR $APP

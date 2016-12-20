@@ -41,11 +41,70 @@ $ eval $(docker-machine env)
 
 ## Creating Docker files
 
-### Zookeeper
+### Base
+
+The `distributedlog-base` docker image carries all the files in the `incubator-distributedlog` host folder, and serves as the basis for all the images below.
+
+Because the image is referenced by the other images, its Docker tag needs to be fixed.
+
+**Building**
+
+```
+$ docker build -t distributedlog-base:latest -f Dockerfile.base .
+```
+
+**Testing**
+
+```
+$ docker run -it --rm distributedlog-base /bin/bash
+bash-4.3# exit
+exit
+```
+
+Later, we can use this with `--link $CONTAINERNAME` to test other containers are working correctly.
 
 <!-- disabled
-We can use the Docker Hub's [zookeeper image](https://hub.docker.com/_/zookeeper/). DistributedLog requires 3.4.x and this one is 3.4.9.
+
+For SOME REASON, Zookeeper keeps in CONNECTING state. 
+
+### Zookeeper 3.5
+
+DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it. The configurations have change a bit - we can aim at 3.5.x right away.
+
+Our `Dockerfile.zookeeper.3.5` is derived from [mrhornsby/zookeeper](https://hub.docker.com/r/mrhornsby/zookeeper/). We simply add our own config files on top.
 -->
+
+### Zookeeper 3.5
+
+DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it. The configurations have change a bit - we can aim at 3.5.x right away.
+
+Our `Dockerfile.zookeeper.3.5` is derived from [mrhornsby/zookeeper](https://hub.docker.com/r/mrhornsby/zookeeper/). We simply add our own config files on top.
+
+**Building**
+
+```
+$ docker build -t zookeeper-3.5:latest -f Dockerfile.zookeeper.3.5 .
+```
+
+**Running**
+
+```
+$ export ZKCONTAINER=zk-container
+$ docker run --name $ZKCONTAINER -v /var/opt/zookeeper --restart always -d zookeeper-3.5:latest
+```
+
+**Testing**
+
+```
+$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog zkshell 127.0.0.1:2181
+```
+
+
+
+<!-- disabled
+...
+
+We can use the Docker Hub's [zookeeper image](https://hub.docker.com/_/zookeeper/). DistributedLog requires 3.4.x and this one is 3.4.9.
 
 Running the Docker Hub's [zookeeper image](https://hub.docker.com/_/zookeeper/) should have worked (DistributedLog requires 3.4.x and this one is 3.4.9), but it didn't. These instructions build, run and test Zookeeper from within the DistributedLog sources.
 
@@ -145,6 +204,8 @@ $ $DL_HOME/distributedlog-service/bin/dlog zkshell $(docker-machine ip):2181
 -->
 
 ### BookKeeper
+
+
 
 ### DistributedLog Core
 
@@ -261,6 +322,8 @@ $ ${DL_HOME}/distributedlog-service/bin/dlog zkshell localhost:2181
 
 If you saw that, things are fine. Let's set up BookKeeper.
 
+<font color=red>The above did NOT work. Going to try separate 3.5.0 [Zookeeper image](https://hub.docker.com/r/mrhornsby/zookeeper/), later.</font>
+ 
 ### BookKeeper
 
 ...
@@ -310,6 +373,32 @@ The configuration is based on DistributedLog's [zookeeper.conf.template](https:/
 Note: We're using the exact same folder structures as DistributedLog documentation, to reduce confusion. This means that all Zookeeper, BookKeeper and DistributedLog files end up in the same `vol` folder. However, each Docker container is mapped to see only the files that it actually needs.
 -->
 
+
+## Troubleshooting
+
+If, in building the Docker image you get this error (would happen under macOS, running `docker-machine`, it has to do with VirtualBox redirects getting too many or something like that...):
+
+```
+#Step 8 : RUN apk add --no-cache   bash
+# ---> Running in 8c72465e03d5
+#fetch http://dl-cdn.alpinelinux.org/alpine/v3.4/main/x86_64/APKINDEX.tar.gz
+#WARNING: Ignoring http://dl-cdn.alpinelinux.org/alpine/v3.4/main/x86_64/APKINDEX.tar.gz: temporary error (try again later)
+#fetch http://dl-cdn.alpinelinux.org/alpine/v3.4/community/x86_64/APKINDEX.tar.gz
+#WARNING: Ignoring http://dl-cdn.alpinelinux.org/alpine/v3.4/community/x86_64/APKINDEX.tar.gz: temporary error (try again later)
+#ERROR: unsatisfiable constraints:
+#  bash (missing):
+#    required by: world[bash]
+```
+
+Solution: 
+
+```
+$ docker-machine stop default
+$ docker-machine start default
+$ eval $(docker-machine env)
+```
+
+Then try again.
 
 ## References
 

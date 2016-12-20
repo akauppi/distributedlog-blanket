@@ -1,11 +1,41 @@
-FROM java:openjdk-8-jre-alpine
+FROM openjdk:8-jre-alpine
+MAINTAINER Asko Kauppi [akauppi@gmail.com]
 
-MAINTAINER Asko Kauppi <akauppi@gmail.com>
+ARG DL=incubator-distributedlog
+ARG VERSION=latest
 
-LABEL name="distributedlog-zk" version="0.4.0-SNAPSHOT"
+ARG APP=/app
+ARG CONF=/conf
+
+LABEL name="distributedlog-bookkeeper" version=$VERSION
+
+# Copy all of 'distributedlog-service', for now (we probably won't need all the files for Bookkeeper).
+#
+COPY $DL/distributedlog-service/ $APP/distributedlog-service/
+
+#COPY conf/zoo.cfg* $CONF/
+
+#RUN apk add --no-cache bash \
+#  && mkdir -p $DATALOG/zookeeper/txlog \
+#  && echo "1" > $DATA/zookeeper/myid
+
+# Are these needed/helpful? From 3.4.9 Zookeeper Docker file
+#
+ENV BROKER_ID 0
+ENV ZK_SERVERS zk1:2181
+
+EXPOSE 2181 2888 3888
+
+WORKDIR $APP
+
+# tbd. Wasn't able to bring the $APP and $CONF to the ENTRYPOINT parameters
+#ENV APP=$APP
+#ENV CONF=$CONF
+ENTRYPOINT [ "/app/distributedlog-service/bin/dlog-daemon.sh", "start", "zookeeper", "/conf/zoo.cfg" ]
+
+
 
 ENV APP /app
-
 ENV DL incubator-distributedlog
 
 COPY ${DL}/distributedlog-service/lib/zookeeper-3.5.1-alpha.jar ${APP}/lib
