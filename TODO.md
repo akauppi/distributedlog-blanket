@@ -1,6 +1,11 @@
 # TODO
 
-- Testing Zookeeper causes an error:
+
+# BUGS
+
+- Using our own configuration file with Zookeeper did not work, for some reason. Check `Dockerfile.zookeeper.3.4.9` and/or `Dockerfile.zookeeper.3.5` (and corresponding notes commented out in `README.md`).
+
+The error is seen at the testing phase, when ZooKeeper remains in `CONNECTING` state, instead of reaching `CONNECTED`:
 
 ```
 $ docker run -it --rm --link $CONTAINER $TESTIMAGE /app/distributedlog-service/bin/dlog zkshell localhost:2181

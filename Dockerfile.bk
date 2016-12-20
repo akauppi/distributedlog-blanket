@@ -1,3 +1,6 @@
+#
+# Dockerfile for BookKeeper (Twitter branch included in DistributedLog 0.4.0-SNAPSHOT)
+#
 FROM openjdk:8-jre-alpine
 MAINTAINER Asko Kauppi [akauppi@gmail.com]
 
@@ -13,16 +16,16 @@ LABEL name="distributedlog-bookkeeper" version=$VERSION
 #
 COPY $DL/distributedlog-service/ $APP/distributedlog-service/
 
-#COPY conf/zoo.cfg* $CONF/
+COPY conf/bookie-*.conf $CONF/
 
-#RUN apk add --no-cache bash \
-#  && mkdir -p $DATALOG/zookeeper/txlog \
-#  && echo "1" > $DATA/zookeeper/myid
+RUN apk add --no-cache \
+  bash
 
-# Are these needed/helpful? From 3.4.9 Zookeeper Docker file
-#
-ENV BROKER_ID 0
-ENV ZK_SERVERS zk1:2181
+...# tbd. Add this to above
+...
+$ BOOKIE_CONF=${DL_HOME}/distributedlog-service/conf/bookie-1.conf ./distributedlog-service/bin/dlog bkshell metaformat
+Are you sure to format bookkeeper metadata ? (Y or N) Y
+
 
 EXPOSE 2181 2888 3888
 
@@ -32,14 +35,3 @@ WORKDIR $APP
 #ENV APP=$APP
 #ENV CONF=$CONF
 ENTRYPOINT [ "/app/distributedlog-service/bin/dlog-daemon.sh", "start", "zookeeper", "/conf/zoo.cfg" ]
-
-
-
-ENV APP /app
-ENV DL incubator-distributedlog
-
-COPY ${DL}/distributedlog-service/lib/zookeeper-3.5.1-alpha.jar ${APP}/lib
-
-WORKDIR ${APP}
-
-#CMD ["/usr/local/bin/write-proxy-start.sh"]
