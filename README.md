@@ -5,8 +5,7 @@
 This repository builds on top of the DistributedLog repo, and tries to
 
 - make a faster initial experience, trying out DistributedLog
-- take a more user focused approach to documentation
-- provide separately deployable Docker images for Zookeeper, Bookkeeper and DistributedLog components (service, write proxy) 
+- provide separately deployable Docker images for Zookeeper, Bookkeeper and DistributedLog components (write proxy, read proxy) 
 
 ## Background
 
@@ -16,7 +15,7 @@ For these reasons, it seems like a good alternative to build all Docker images f
 
 ## Approaches
 
-It's up to you, which distributedlog release - or master - you wish to set up under `distributedlog` subfolder. This allows us to follow the evolving project at a close range.
+It's up to you, which distributedlog release - or master - you wish to set up under `incubator-distributedlog` subfolder. This allows us to follow the evolving project at a close range.
 
 Instead of making the Docker side pull distributedlog files in, or pouring all of them for each package, or making just one has-all package, we selectively copy the files actually needed to run the particular subprojects. This is more modular, and closer to how independent Docker modules would behave.
 
