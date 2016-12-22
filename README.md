@@ -157,7 +157,7 @@ WatchedEvent state:SyncConnected type:None path:null
 
 If you see the **CONNECTED**, ZooKeeper is up and running.
 
-<!-- broken, please fix :)
+<!-- disabled, since didn't get it to work, please fix :)
 ### Zookeeper 3.5
 
 DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it. The configurations have change a bit - we can aim at 3.5.x right away.
@@ -167,14 +167,17 @@ Our `Dockerfile.zookeeper.3.5` is derived from [mrhornsby/zookeeper](https://hub
 **Building**
 
 ```
-$ docker build -t zookeeper-3.5:latest -f Dockerfile.zookeeper.3.5 .
+$ export ZKIMAGE=zookeeper-3.5
+$ docker build -t $ZKIMAGE -f Dockerfile.zookeeper.3.5 .
 ```
 
 **Running**
 
+The name we give to the container is simply for easing the instructions. It can be anything.
+
 ```
 $ export ZKCONTAINER=zk-container
-$ docker run --name $ZKCONTAINER -v /var/opt/zookeeper --restart always -d zookeeper-3.5:latest
+$ docker run --name $ZKCONTAINER -v /var/opt/zookeeper --restart always -d $ZKIMAGE:latest
 ```
 
 **Testing**
@@ -183,112 +186,10 @@ $ docker run --name $ZKCONTAINER -v /var/opt/zookeeper --restart always -d zooke
 $ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog zkshell 127.0.0.1:2181
 ```
 
-<font color=red>This DID NOT pass the test: keeps state as CONNECTING instead of CONNECTED. Why is that?
+<font color=red>This DID NOT pass the test: keeps state as CONNECTING instead of CONNECTED (i.e. ZooKeeper is not running). Why is that?
 </font>
 -->
 
-
-<!-- disabled
-...
-
-We can use the Docker Hub's [zookeeper image](https://hub.docker.com/_/zookeeper/). DistributedLog requires 3.4.x and this one is 3.4.9.
-
-Running the Docker Hub's [zookeeper image](https://hub.docker.com/_/zookeeper/) should have worked (DistributedLog requires 3.4.x and this one is 3.4.9), but it didn't. These instructions build, run and test Zookeeper from within the DistributedLog sources.
-
-**Building**
-
-You can name the image and the container the way you like.
-
-```
-$ export IMAGE=dlzk:latest
-$ export CONTAINER=dlzk-container
-$ docker build -t $IMAGE -f Dockerfile.zookeeper .
-```
-
-**Running**
-
-```
-$ docker run --name $CONTAINER --restart always -d $IMAGE
-```
-
-The Docker file exposes ports 2181 2888 3888 (client port, follower port, election port), e.g. if this image is linked with others. To reach Zookeeper from the host, add `-P` to the command.
-
-To override configuration, use `-v your.cfg:/conf/zoo.cfg` (e.g. if you run multiple Zookeeper instances).
-
-Note: DistributedLog seems to prefer `zookeeper.conf` but latest (3.5.x) Zookeeper has `zoo.cfg`. We go with the latest trend.
-
-**Testing**
-
-For testing, let's create another container that contains all the files in the `incubator-distributedlog` folder. By doing this, we can access all the support files (such as `scripts/*`) and can test the `--link` of ports between different containers.
-
-```
-$ export TESTIMAGE=dltest:latest
-$ export TESTCONTAINER=dltest-container
-$ docker build -t $TESTIMAGE -f Dockerfile.test .
-```
-
-Test by running a command within the Docker container:
-
-```
-$ docker run -it --rm --link $CONTAINER $TESTIMAGE /app/distributedlog-service/bin/dlog zkshell localhost:2181
-...
-[zk: localhost:2181(CONNECTED) 0] ls /
-[zookeeper]
-[zk: localhost:2181(CONNECTED) 1] quit
-```
-
-<!-- Did not work, even with '-P'. Gives
-<<
-[zk: 192.168.99.100:2181(CONNECTING) 0] ls /
-Exception in thread "main" org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /
-	at org.apache.zookeeper.KeeperException.create(KeeperException.java:99)
-	at org.apache.zookeeper.KeeperException.create(KeeperException.java:51)
-	at org.apache.zookeeper.ZooKeeper.getChildren(ZooKeeper.java:2255)
-	at org.apache.zookeeper.ZooKeeper.getChildren(ZooKeeper.java:2283)
-	at org.apache.zookeeper.cli.LsCommand.exec(LsCommand.java:93)
-	at org.apache.zookeeper.ZooKeeperMain.processZKCmd(ZooKeeperMain.java:674)
-	at org.apache.zookeeper.ZooKeeperMain.processCmd(ZooKeeperMain.java:577)
-	at org.apache.zookeeper.ZooKeeperMain.executeLine(ZooKeeperMain.java:360)
-	at org.apache.zookeeper.ZooKeeperMain.run(ZooKeeperMain.java:320)
-	at org.apache.zookeeper.ZooKeeperMain.main(ZooKeeperMain.java:280)
-<<
-	
-Alternatively, you can test that you can reach Zookeeper from the host (if you used `-P` in `docker run`):
-
-```
-$ docker-machine ip
-192.168.99.100
-$ incubator-distributedlog/distributedlog-service/bin/dlog zkshell 192.168.99.100:2181
-...
-[zk: localhost:2181(CONNECTED) 0] ls /
-[zookeeper]
-[zk: localhost:2181(CONNECTED) 1] quit
-```
--->
-
-
-
-<!-- remove?
-```
-$ docker build -t your.org/yourid/distributedlog-zk:latest -f Dockerfile.zk .
-```
-
-Testing
-
-```
-$ docker run your.org/yourid/distributedlog-zk:latest
-
-$ $DL_HOME/distributedlog-service/bin/dlog zkshell $(docker-machine ip):2181
-...
-[zk: 192.168.1.101:2181(CONNECTED) 0] ls /
-[zookeeper]
-[zk: 192.168.1.101:2181(CONNECTED) 1] quit
-```
-
-#### References
-
-- jplock/[docker-zookeeper](https://github.com/jplock/docker-zookeeper/blob/master/Dockerfile)
--->
 
 ### BookKeeper
 
