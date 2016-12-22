@@ -6,7 +6,6 @@
 # Can also be used for running tests, peeking behind the Docker vail by using 'docker ... -link ...'.
 #
 FROM openjdk:8-jre-alpine
-#FROM java8
 
 MAINTAINER Asko Kauppi [akauppi@gmail.com]
 
@@ -21,13 +20,9 @@ LABEL name="distributedlog-base" version=$VERSION
 #
 COPY $DL $APP
 
-# Install 'bash' which is needed by some DL scripts
+# Install tools needed by some DL scripts
 #
 RUN apk add --no-cache \
   bash
 
 WORKDIR $APP
-
-# Default command = just open bash (for debugging etc.)
-#
-CMD = [ "/bin/bash" ]

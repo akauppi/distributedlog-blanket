@@ -57,18 +57,20 @@ Because the image is referenced by the other images, its Docker tag needs to be 
 **Building**
 
 ```
-$ docker build -t distributedlog-base:latest -f Dockerfile.base .
+$ export BASEIMAGE=distributedlog-base
+$ docker build -t $BASEIMAGE -f Dockerfile.base .
 ```
 
 **Testing**
 
 ```
-$ docker run -it --rm distributedlog-base /bin/bash
+$ docker run -it --rm $BASEIMAGE /bin/bash
 bash-4.3# exit
 exit
 ```
 
 Later, we can use this with `--link $CONTAINERNAME` to test other containers are working correctly.
+
 
 <!-- disabled; hoping to use our config
 ### Zookeeper 3.4.9 (WITHOUT our config)
@@ -192,11 +194,9 @@ $ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlo
 
 ### Configuring ZooKeeper
 
-Before using BookKeeper, three things need to be manually set up in ZooKeeper.
+Before using BookKeeper, the `/messaging/bookkeeper/ledgers` path needs to be created within ZooKeeper.
 
 Note: This follows the instructions in [Cluster Setup & Deployment](http://distributedlog.incubator.apache.org/docs/latest/deployment/cluster.html). Maybe it can be automated, maybe not.
-
-We change the configuration by directly touching ZooKeeper contents.
 
 ```
 $ docker run -it --rm --link $ZKCONTAINER:zookeeper $ZKIMAGE zkCli.sh -server zookeeper
@@ -228,6 +228,10 @@ That project does not have a Dockerfile, but DistributedLog carries a copy that 
 
 We want this image to be separate from e.g. the Write Proxy so that the number and placement of processes can be independently adjusted on all the DistributedLog components.
 
+We also want multiple instances (e.g. three, like in DistributedLog's sample) to be runnable on a single Docker host.
+
+<font color=red>Note: The `Dockerfile.bk` file is NOT all right. Do not advance unless you plan to have a look at it and fix it.</font>
+
 **Building**
 
 ```
@@ -239,7 +243,7 @@ $ docker build -t $BKIMAGE -f Dockerfile.bk .
 
 ```
 $ export BKCONTAINER=bkc
-$ ID=1 docker run --name $BKCONTAINER -d $BKIMAGE
+$ ID=1 docker run --name $BKCONTAINER --link $ZKCONTAINER -d $BKIMAGE
 ```
 
 **Testing**
@@ -247,7 +251,7 @@ $ ID=1 docker run --name $BKCONTAINER -d $BKIMAGE
 Running of BookKeeper is tested by looking into the ZooKeeper contents:
 
 ```
-$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog zkshell 127.0.0.1:2181
+$ docker run -it --rm --link $ZKCONTAINER $BASEIMAGE /app/distributedlog-service/bin/dlog zkshell 127.0.0.1:2181
 ...
 WATCHER::
 
@@ -268,28 +272,6 @@ curl localhost:9001/metrics?pretty=true
 
 Now we have both dependencies running. 
 
-**Namespaces**
-
-You can just use the default namespace, `distributedlog://127.0.0.1:2181/messaging/distributedlog`, but if you wish to configure them, now is the time.
-
-Q: Why would one want to configure namespaces?
-
-Also this is done by manipulating ZooKeeper contents, via `dlog admin bind` command.
-
-```
-$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /bin/bash
-
-/app/distributedlog-service/bin/dlog admin bind \
-    -dlzr 127.0.0.1:2181 \
-    -dlzw 127.0.0.1:2181 \
-    -s 127.0.0.1:2181 \
-    -bkzr 127.0.0.1:2181 \
-    -l /messaging/bookkeeper/ledgers \
-    -i false \
-    -r true \
-    -c \
-    distributedlog://127.0.0.1:2181/messaging/distributedlog/mynamespace
-```
 
 ### DistributedLog Write Proxy
 
@@ -333,20 +315,43 @@ $ curl localhost:20001/ping
 pong
 ```
 
+## Creating DistributedLog Namespace(s)
+
+Note: In DistributedLog instructions, this is done before starting Write Proxy, but it likely can be done at any time.
+
+You can just use the default namespace, `distributedlog://127.0.0.1:2181/messaging/distributedlog`, or add your custom namespaces below it.
+
+Also this is done by manipulating ZooKeeper contents, via `dlog admin bind` command.
+
+```
+$ docker run -it --rm --link $ZKCONTAINER $BASEIMAGE /app/distributedlog-service/bin/dlog admin bind \
+    -dlzr 127.0.0.1:2181 \
+    -dlzw 127.0.0.1:2181 \
+    -s 127.0.0.1:2181 \
+    -bkzr 127.0.0.1:2181 \
+    -l /messaging/bookkeeper/ledgers \
+    -i false \
+    -r true \
+    -c \
+    distributedlog://127.0.0.1:2181/messaging/distributedlog/abc
+```
+
+That adds the namespace `abc`.
+
 ## Overall testing
 
 ```
-$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-service/bin/dlog tool create -u distributedlog://127.0.0.1:2181/messaging/distributedlog/mynamespace -r stream- -e 0-10
-You are going to create streams : [stream-0, stream-1, stream-2, stream-3, stream-4, stream-5, stream-6, stream-7, stream-8, stream-9, stream-10] (Y or N) Y
+$ docker run -it --rm --link $ZKCONTAINER $BASEIMAGE /app/distributedlog-service/bin/dlog tool create -u distributedlog://127.0.0.1:2181/messaging/distributedlog/abc -r stream- -e 0-5
+You are going to create streams : [stream-0, stream-1, stream-2, stream-3, stream-4, stream-5] (Y or N) Y
 ```
 
-Tail read from such 10 streams:
+Tail read from such 5 streams:
 
 ```
-$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-tutorials/distributedlog-basic/bin/runner run com.twitter.distributedlog.basic.MultiReader distributedlog://127.0.0.1:2181/messaging/distributedlog/mynamespace stream-0,stream-1,stream-2,stream-3,stream-4,stream-5,stream-6,stream-7,stream-8,stream-9,stream-10
+$ docker run -it --rm --link $ZKCONTAINER $BASEIMAGE /app/distributedlog-tutorials/distributedlog-basic/bin/runner run com.twitter.distributedlog.basic.MultiReader distributedlog://127.0.0.1:2181/messaging/distributedlog/abc stream-0,stream-1,stream-2,stream-3,stream-4,stream-5
 ```
 
-All of these of course get slightly simpler if you expose the ZooKeeper port `2181` when launching the container, so you can reach it directly from the host.
+You can do all these locally if you expose the ZooKeeper port `2181` when launching that container (add `-P` flag).
 
 
 ### Whole shebang with `docker-compose`
@@ -354,7 +359,7 @@ All of these of course get slightly simpler if you expose the ZooKeeper port `21
 To compose a combination of:
 
 - ZooKeeper (one node)
-- BookKeeper (one node)
+- BookKeeper (three nodes)
 - Write Proxy (one node)
 
 This is useful e.g. for development.
@@ -375,7 +380,7 @@ $ docker-compose down
 To create artificial load on a DistributedLog cluster, one can:
 
 ```
-$ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlog-tutorials/distributedlog-basic/bin/runner run com.twitter.distributedlog.basic.RecordGenerator 'zk!127.0.0.1:2181!/messaging/distributedlog/mynamespace/.write_proxy' stream-0 100
+$ docker run -it --rm --link $ZKCONTAINER $BASEIMAG /app/distributedlog-tutorials/distributedlog-basic/bin/runner run com.twitter.distributedlog.basic.RecordGenerator 'zk!127.0.0.1:2181!/messaging/distributedlog/abc/.write_proxy' stream-0 100
 ```
 
 This fetches the write proxy address from the ZooKeeper, and then feeds values through it.
@@ -420,10 +425,10 @@ Then try again.
 Currently (Dec-16) available other DistributedLog Docker files/projects:
 
 - distributedlog itself
-- franckcuny/[docker-distributedlog](https://github.com/franckcuny/docker-distributedlog)
+  - uses Vagrant; did not want to do that
+- franckcuny/[docker-distributedlog](https://github.com/franckcuny/docker-distributedlog) (GitHub)
   - for the earlier 0.3.51 (pre Apache incubator) release
   - packages DistributedLog only, not e.g. the special version of BookKeeper needed for running it
 - 31z4/[zookeeper-docker](https://github.com/31z4/zookeeper-docker) (GitHub)
 
 The approaches taken in these did not match our needs. Ideally, the DistributedLog project itself will allow cluster-friendly dockerization, e.g. for Kubernetes.
-

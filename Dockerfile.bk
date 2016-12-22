@@ -1,8 +1,11 @@
 #
 # Dockerfile.bk
 #
-# BookKeeper Twitter variant. Tried to design the Dockerfile so that one or more instances can be launched, also
-# on the same Docker container (i.e. the file names contain the ID).
+# BookKeeper Twitter variant.
+#
+# Q: What is the right approach to do this:
+#   Tried to design the Dockerfile so that one or more instances can be launched, also
+#   on the same Docker container (i.e. the file names contain the ID).
 #
 FROM distributedlog-base
 MAINTAINER Asko Kauppi [akauppi@gmail.com]
@@ -14,12 +17,9 @@ ARG APP=/app
 ARG CONF=/conf
 ARG ID=1
 
-LABEL name="distributedlog-bk-$ID" version=$VERSION
+LABEL name="distributedlog-bk" version=$VERSION
 
 COPY conf/bookie-x.conf $CONF/bookie-${ID}.conf
-
-RUN apk add --no-cache \
-  bash
 
 RUN echo bookiePort=318${ID} >> $CONF/bookie-${ID}.conf \
   && echo codahaleStatsHttpPort=900${ID} >> $CONF/bookie-${ID}.conf \
