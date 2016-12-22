@@ -1,0 +1,11 @@
+#
+# Dockerfile for ZooKeeper 3.4.9
+#
+# References:
+#   - https://github.com/31z4/zookeeper-docker
+#
+FROM 31z4/zookeeper
+
+MAINTAINER Asko Kauppi [akauppi@gmail.com]
+
+COPY conf/zoo.cfg /conf/

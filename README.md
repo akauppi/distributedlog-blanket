@@ -70,7 +70,7 @@ exit
 
 Later, we can use this with `--link $CONTAINERNAME` to test other containers are working correctly.
 
-
+<!-- disabled; hoping to use our config
 ### Zookeeper 3.4.9 (WITHOUT our config)
 
 DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it.
@@ -107,18 +107,30 @@ WatchedEvent state:SyncConnected type:None path:null
 
 If you see the **CONNECTED**, ZooKeeper is up and available.
 
+The configuration file for this image is:
 
-<!--
-### Zookeeper 3.4.9 (with our config) - BROKEN
+```
+# cat /conf/zoo.cfg 
+clientPort=2181
+dataDir=/data
+dataLogDir=/datalog
+tickTime=2000
+initLimit=5
+syncLimit=2
+```
+-->
+
+### Zookeeper 3.4.9 (with our config)
 
 DistributedLog requires ZooKeeper 3.4.x but it carries 3.5.1-alpha with it. However, we did not get 3.5 to work under Docker (details commented out, below).
 
-The one we got working is based on the [31z4/zookeeper](https://github.com/31z4/zookeeper-docker) image. We simply add our own config files on top.
+Instead, we're using [31z4/zookeeper](https://github.com/31z4/zookeeper-docker) image with a custom config in `conf/zoo.cfg`.
 
 **Building**
 
 ```
-$ docker build -t zookeeper-3.4.9:latest -f Dockerfile.zookeeper.3.4.9 .
+$ export ZKIMAGE=zk-3.4.9
+$ docker build -t $ZKIMAGE -f Dockerfile.zookeeper.3.4.9 .
 ```
 
 **Running**
@@ -127,13 +139,13 @@ The name we give to the container is simply for easing the instructions. It can 
 
 ```
 $ export ZKCONTAINER=zk-container
-$ docker run --name $ZKCONTAINER --restart always -d zookeeper-3.4.9:latest
+$ docker run --name $ZKCONTAINER --restart always -d $ZKIMAGE:latest
 ```
 
 **Testing**
 
 ```
-$ docker run -it --rm --link $ZKCONTAINER:zookeeper zookeeper-3.4.9 zkCli.sh -server zookeeper
+$ docker run -it --rm --link $ZKCONTAINER:zookeeper $ZKIMAGE zkCli.sh -server zookeeper
 ...
 WATCHER::
 
@@ -143,12 +155,7 @@ WatchedEvent state:SyncConnected type:None path:null
 [zk: zookeeper(CONNECTED) 1] quit
 ```
 
-If you see the **CONNECTED**, ZooKeeper is up and available.
-
-**Troubleshooting**
-
-If there's a repeating 'connection refused', the Zookeeper config file has some issue. See TODO.
--->
+If you see the **CONNECTED**, ZooKeeper is up and running.
 
 <!-- broken, please fix :)
 ### Zookeeper 3.5
@@ -507,10 +514,12 @@ Then try again.
 
 ### Other DistributedLog / BookKeeper / ZooKeeper Docker projects
 
-The Docker files are based on:
+Currently (Dec-16) available other DistributedLog Docker files/projects:
 
 - distributedlog itself
 - franckcuny/[docker-distributedlog](https://github.com/franckcuny/docker-distributedlog)
+  - for the earlier 0.3.51 (pre Apache incubator) release
+  - packages DistributedLog only, not e.g. the special version of BookKeeper needed for running it
 - 31z4/[zookeeper-docker](https://github.com/31z4/zookeeper-docker) (GitHub)
 
 The approaches taken in these did not match our needs. Ideally, the DistributedLog project itself will allow cluster-friendly dockerization, e.g. for Kubernetes.
