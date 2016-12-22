@@ -226,23 +226,19 @@ DistributedLog uses a twitter branch of BookKeeper:
 
 That project does not have a Dockerfile, but DistributedLog carries a copy that we can build an image from.
 
-We want this image to be separate from e.g. the Write Proxy so that the number and placement of processes can be independently adjusted on all the DistributedLog components.
-
-We also want multiple instances (e.g. three, like in DistributedLog's sample) to be runnable on a single Docker host.
-
-<font color=red>Note: The `Dockerfile.bk` file is NOT all right. Do not advance unless you plan to have a look at it and fix it.</font>
+We want multiple instances (e.g. three, like in DistributedLog's sample) to be runnable on a single Docker host, if possible. Currently this seems problematic, so there is just a `Dockerfile.bk1`. Help from experienced Docker users appreciated.
 
 **Building**
 
 ```
-$ export BKIMAGE=dlbk:latest
-$ docker build -t $BKIMAGE -f Dockerfile.bk .
+$ export BKIMAGE=dlbk1:latest
+$ docker build -t $BKIMAGE -f Dockerfile.bk1 .
 ```
 
 **Running**
 
 ```
-$ export BKCONTAINER=bkc
+$ export BKCONTAINER=bkc1
 $ ID=1 docker run --name $BKCONTAINER --link $ZKCONTAINER -d $BKIMAGE
 ```
 

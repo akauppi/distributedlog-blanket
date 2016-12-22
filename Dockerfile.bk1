@@ -1,0 +1,55 @@
+#
+# Dockerfile.bk1
+#
+# BookKeeper Twitter variant.
+#
+# Note: BookKeeper's approach is heavy on configuration files, and I'm not sure if those can read env.vars
+#   (like Typesafe Config can). If so, we can merge the 1-2-3 different Dockerfiles together, and refer to
+#   env.vars in the config.
+#
+#   Or we can make a custom script that sets the configs properly before launching the BookKeeper service.
+#
+#   Are there other solutions? We'd like to be able to run e.g. three BookKeeper nodes within the same
+#   Docker machine, without them stumbling on each others' ports, or files (is that even a problem?).
+#
+FROM distributedlog-base
+MAINTAINER Asko Kauppi [akauppi@gmail.com]
+
+ARG DL=incubator-distributedlog
+ARG VERSION=latest
+
+ARG APP=/app
+ARG CONF=/conf
+ARG ID=1
+
+LABEL name="distributedlog-bk-${ID}" version=$VERSION
+
+COPY conf/bookie-x.conf $CONF/bookie-${ID}.conf
+
+RUN echo bookiePort=318${ID} >> $CONF/bookie-${ID}.conf \
+  && echo codahaleStatsHttpPort=900${ID} >> $CONF/bookie-${ID}.conf \
+  && echo journalDirectory=/tmp/data/bk-${ID}/journal >> $CONF/bookie-${ID}.conf \
+  && echo ledgerDirectories=/tmp/data/bk-${ID}/ledgers >> $CONF/bookie-${ID}.conf \
+  && echo indexDirectories=/tmp/data/bk-${ID}/ledgers >> $CONF/bookie-${ID}.conf \
+
+EXPOSE 318${ID} 900${ID}
+
+WORKDIR $APP
+
+# tbd. Wasn't able to bring the $APP and $CONF to the ENTRYPOINT parameters
+#ENV APP=$APP
+#ENV CONF=$CONF
+
+ENV BOOKIE_CONF=$CONF/bookie-${ID}.conf
+
+# tbd. Why is `SERVICE_PORT` given here (for `dlog-daemon.sh`), it's also in the config file
+#
+ENV SERVICE_PORT=318${ID}
+
+# Note: The `dlog bkshell` command needs access to ZooKeeper, but those should likely only be done
+#   once (not every time the container is started). What's the right place for them / are they needed?
+#
+CMD  \
+  $APP/distributedlog-service/bin/dlog bkshell metaformat \
+  && $APP/distributedlog-service/bin/dlog bkshell bookieformat \
+  && $APP/distributedlog-service/bin/dlog-daemon.sh start bookie --conf $BOOKIE_CONF
