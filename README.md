@@ -190,34 +190,16 @@ $ docker run -it --rm --link $ZKCONTAINER distributedlog-base /app/distributedlo
 </font>
 -->
 
+### Configuring ZooKeeper
 
-### BookKeeper
-
-DistributedLog uses a twitter branch of BookKeeper:
-
-> The version of BookKeeper that DistributedLog depends on is ... twitter's production version 4.3.4-TWTTR, which is available in https://github.com/twitter/bookkeeper.
- 
-[source](http://distributedlog.incubator.apache.org/docs/latest/admin_guide/bookkeeper.html)
-
-Because of this, we're building BookKeeper from the DistributedLog sources.
-
-**Building**
-
-```
-$ export BKIMAGE=dlbk:latest
-$ docker build -t $BKIMAGE -f Dockerfile.bk .
-```
-
-**Configuring ZooKeeper**
-
-Let's use the same mechanism as in testing ZooKeeper, to provide it an initial configuration.
+Before using BookKeeper, three things need to be manually set up in ZooKeeper.
 
 Note: This follows the instructions in [Cluster Setup & Deployment](http://distributedlog.incubator.apache.org/docs/latest/deployment/cluster.html). Maybe it can be automated, maybe not.
 
 We change the configuration by directly touching ZooKeeper contents.
 
 ```
-$ docker run -it --rm --link $ZKCONTAINER:zookeeper 31z4/zookeeper zkCli.sh -server zookeeper
+$ docker run -it --rm --link $ZKCONTAINER:zookeeper $ZKIMAGE zkCli.sh -server zookeeper
 ...
 WATCHER::
 
@@ -228,10 +210,30 @@ Created /messaging
 Created /messaging/bookkeeper
 [zk: localhost:2181(CONNECTED) 2] create /messaging/bookkeeper/ledgers ''
 Created /messaging/bookkeeper/ledgers
-[zk: localhost:2181(CONNECTED) 3]
+[zk: localhost:2181(CONNECTED) 3] quit
 ```
 
-Type `quit` to exit the ZooKeeper prompt.
+That's it. Let's build a BookKeeper Docker image.
+
+
+### BookKeeper
+
+DistributedLog uses a twitter branch of BookKeeper:
+
+> The version of BookKeeper that DistributedLog depends on is ... twitter's production version 4.3.4-TWTTR, which is available in https://github.com/twitter/bookkeeper. 
+
+<!-- quote from: http://distributedlog.incubator.apache.org/docs/latest/admin_guide/bookkeeper.html -->
+
+That project does not have a Dockerfile, but DistributedLog carries a copy that we can build an image from.
+
+We want this image to be separate from e.g. the Write Proxy so that the number and placement of processes can be independently adjusted on all the DistributedLog components.
+
+**Building**
+
+```
+$ export BKIMAGE=dlbk:latest
+$ docker build -t $BKIMAGE -f Dockerfile.bk .
+```
 
 **Running**
 
